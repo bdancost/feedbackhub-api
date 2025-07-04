@@ -3,6 +3,10 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "secretkey";
 
+export interface AuthenticatedRequest extends Request {
+  userId?: string;
+}
+
 interface JwtPayload {
   userId: string;
   email: string;
