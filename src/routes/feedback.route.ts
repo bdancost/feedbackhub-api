@@ -1,11 +1,13 @@
-// src/routes/feedback.routes.ts
+// src/routes/feedback.route.ts
 import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
+import { authenticateToken } from "../middlewares/auth.middleware";
 
 const router = Router();
 const prisma = new PrismaClient();
 
-router.post("/", async (req, res) => {
+// 🔒 Rota protegida para envio de feedback
+router.post("/", authenticateToken, async (req, res) => {
   const { name, email, message, rating } = req.body;
 
   try {
@@ -20,11 +22,17 @@ router.post("/", async (req, res) => {
   }
 });
 
+// ✅ Rota pública para listar feedbacks
 router.get("/", async (_, res) => {
-  const feedbacks = await prisma.feedback.findMany({
-    orderBy: { createdAt: "desc" },
-  });
-  res.json(feedbacks);
+  try {
+    const feedbacks = await prisma.feedback.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    res.json(feedbacks);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erro ao buscar feedbacks." });
+  }
 });
 
 export default router;
