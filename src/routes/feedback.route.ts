@@ -3,6 +3,7 @@ import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
 import { authenticateToken } from "../middlewares/auth.middleware";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
+import { sendFeedbackEmail } from "../utils/mailer";
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -21,6 +22,9 @@ router.post("/", authenticateToken, async (req, res) => {
         userId: Number((req as AuthenticatedRequest).user?.id),
       },
     });
+
+    // Envia email de agradecimento
+    await sendFeedbackEmail(email, name);
 
     res.status(201).json(feedback);
   } catch (err) {
