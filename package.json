@@ -23,7 +23,7 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^7.0.4",
-    "zod": "^3.25.71"
+    "zod": "^3.25.74"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
