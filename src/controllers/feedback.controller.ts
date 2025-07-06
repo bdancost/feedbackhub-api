@@ -1,4 +1,3 @@
-// src/controllers/feedback.controller.ts
 import { Request, Response } from "express";
 import { feedbackSchema } from "../schemas/feedback.schema";
 import { AuthenticatedRequest } from "../middlewares/auth.middleware";
@@ -36,7 +35,7 @@ export const FeedbackController = {
         });
       }
 
-      logger.error("Erro inesperado ao criar feedback: " + err);
+      logger.error({ err }, "Erro inesperado ao criar feedback");
       res.status(500).json({ error: "Erro ao criar feedback." });
     }
   },
@@ -44,11 +43,11 @@ export const FeedbackController = {
   // ✅ GET ALL
   async getAll(_: Request, res: Response) {
     try {
-      logger.info("Buscando todos os feedbacks");
+      logger.info("Listando todos os feedbacks");
       const feedbacks = await FeedbackService.getAllFeedbacks();
       res.json(feedbacks);
     } catch (error) {
-      logger.error("Erro ao buscar todos os feedbacks: " + error);
+      logger.error({ err: error }, "Erro ao buscar todos os feedbacks");
       res.status(500).json({ error: "Erro ao buscar feedbacks." });
     }
   },
@@ -57,12 +56,12 @@ export const FeedbackController = {
   async getUserFeedbacks(req: AuthenticatedRequest, res: Response) {
     try {
       const userId = Number(req.user?.id);
-      logger.info(`Buscando feedbacks do usuário ID ${userId}`);
+      logger.info(`Listando feedbacks do usuário ID ${userId}`);
 
       const feedbacks = await FeedbackService.getFeedbacksByUser(userId);
       res.json(feedbacks);
     } catch (error) {
-      logger.error("Erro ao buscar feedbacks do usuário: " + error);
+      logger.error({ err: error }, "Erro ao buscar feedbacks do usuário");
       res.status(500).json({ error: "Erro ao buscar feedbacks do usuário." });
     }
   },
@@ -72,7 +71,7 @@ export const FeedbackController = {
     const { id } = req.params;
 
     try {
-      logger.info(`Tentando deletar feedback ID ${id}`);
+      logger.info(`Recebendo requisição para deletar feedback ID ${id}`);
       const result = await FeedbackService.deleteFeedback(
         id,
         Number(req.user?.id)
@@ -91,23 +90,24 @@ export const FeedbackController = {
       logger.info(`Feedback ID ${id} deletado com sucesso`);
       res.json({ message: "Feedback deletado com sucesso." });
     } catch (error) {
-      logger.error("Erro ao deletar feedback: " + error);
+      logger.error({ err: error }, "Erro ao deletar feedback");
       res.status(500).json({ error: "Erro ao deletar feedback." });
     }
   },
 
-  // ✅ UPDATE
+  // ✅ UPDATE com validação parcial
   async update(req: AuthenticatedRequest, res: Response) {
     const { id } = req.params;
-    const { name, email, message, rating } = req.body;
+    logger.info(`Recebendo requisição para atualizar feedback ID ${id}`);
 
     try {
-      logger.info(`Tentando atualizar feedback ID ${id}`);
+      const updateSchema = feedbackSchema.partial(); // Valida apenas campos enviados
+      const validatedUpdate = updateSchema.parse(req.body);
 
       const updated = await FeedbackService.updateFeedback(
         id,
         Number(req.user?.id),
-        { name, email, message, rating }
+        validatedUpdate
       );
 
       if (updated === "not_found") {
@@ -122,8 +122,16 @@ export const FeedbackController = {
 
       logger.info(`Feedback ID ${id} atualizado com sucesso`);
       res.json(updated);
-    } catch (error) {
-      logger.error("Erro ao atualizar feedback: " + error);
+    } catch (err) {
+      if (err instanceof ZodError) {
+        logger.warn("Erro de validação ao atualizar feedback");
+        return res.status(400).json({
+          error: "Erro de validação",
+          details: err.errors,
+        });
+      }
+
+      logger.error({ err }, "Erro ao atualizar feedback");
       res.status(500).json({ error: "Erro ao atualizar feedback." });
     }
   },

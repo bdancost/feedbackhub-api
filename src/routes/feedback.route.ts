@@ -1,139 +1,150 @@
 // src/routes/feedback.route.ts
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
 import { authenticateToken } from "../middlewares/auth.middleware";
-import { AuthenticatedRequest } from "../middlewares/auth.middleware";
-import { sendFeedbackEmail } from "../utils/mailer";
+import { FeedbackController } from "../controllers/feedback.controller";
 
 const router = Router();
-const prisma = new PrismaClient();
 
-// 🔒 Rota protegida para envio de feedback
-router.post("/", authenticateToken, async (req, res) => {
-  const { name, email, message, rating } = req.body;
+/**
+ * @swagger
+ * /feedback:
+ *   post:
+ *     summary: Cria um novo feedback
+ *     tags: [Feedback]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, email, message, rating]
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               message:
+ *                 type: string
+ *               rating:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 5
+ *     responses:
+ *       201:
+ *         description: Feedback criado com sucesso
+ *       400:
+ *         description: Erro de validação
+ *       500:
+ *         description: Erro interno
+ */
 
-  try {
-    const feedback = await prisma.feedback.create({
-      data: {
-        name,
-        email,
-        message,
-        rating,
-        userId: Number((req as AuthenticatedRequest).user?.id),
-      },
-    });
+router.post("/", authenticateToken, FeedbackController.create);
 
-    // Envia email de agradecimento
-    await sendFeedbackEmail(email, name);
+/**
+ * @swagger
+ * /feedback:
+ *   get:
+ *     summary: Lista todos os feedbacks
+ *     tags: [Feedback]
+ *     responses:
+ *       200:
+ *         description: Lista de feedbacks
+ *       500:
+ *         description: Erro interno
+ */
 
-    res.status(201).json(feedback);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro ao criar feedback." });
-  }
-});
+router.get("/", FeedbackController.getAll);
 
-// ✅ Rota pública para listar feedbacks
-router.get("/", async (_, res) => {
-  try {
-    const feedbacks = await prisma.feedback.findMany({
-      orderBy: { createdAt: "desc" },
-    });
-    res.json(feedbacks);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro ao buscar feedbacks." });
-  }
-});
+/**
+ * @swagger
+ * /feedback/my:
+ *   get:
+ *     summary: Lista feedbacks do usuário logado
+ *     tags: [Feedback]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de feedbacks do usuário
+ *       500:
+ *         description: Erro interno
+ */
 
-// 🔒 Rota protegida para listar feedbacks do usuário logado
-router.get("/my", authenticateToken, async (req: AuthenticatedRequest, res) => {
-  try {
-    const feedbacks = await prisma.feedback.findMany({
-      where: { userId: Number(req.user?.id) },
-      orderBy: { createdAt: "desc" },
-    });
+router.get("/my", authenticateToken, FeedbackController.getUserFeedbacks);
 
-    res.json(feedbacks);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erro ao buscar feedbacks do usuário." });
-  }
-});
+/**
+ * @swagger
+ * /feedback/{id}:
+ *   put:
+ *     summary: Atualiza um feedback existente
+ *     tags: [Feedback]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: ID do feedback
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               message:
+ *                 type: string
+ *               rating:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 5
+ *     responses:
+ *       200:
+ *         description: Feedback atualizado
+ *       404:
+ *         description: Feedback não encontrado
+ *       403:
+ *         description: Ação não permitida
+ *       500:
+ *         description: Erro interno
+ */
 
-// 🔒 Rota protegida para deletar feedback do usuário logado
-router.delete(
-  "/:id",
-  authenticateToken,
-  async (req: AuthenticatedRequest, res) => {
-    const { id } = req.params;
+router.put("/:id", authenticateToken, FeedbackController.update);
 
-    try {
-      // Verifica se o feedback pertence ao usuário autenticado
-      const feedback = await prisma.feedback.findUnique({
-        where: { id },
-      });
+/**
+ * @swagger
+ * /feedback/{id}:
+ *   delete:
+ *     summary: Deleta um feedback
+ *     tags: [Feedback]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: ID do feedback
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Feedback deletado com sucesso
+ *       404:
+ *         description: Feedback não encontrado
+ *       403:
+ *         description: Ação não permitida
+ *       500:
+ *         description: Erro interno
+ */
 
-      if (!feedback) {
-        return res.status(404).json({ error: "Feedback não encontrado." });
-      }
-
-      if (feedback.userId !== Number(req.user?.id)) {
-        return res.status(403).json({ error: "Ação não permitida." });
-      }
-
-      await prisma.feedback.delete({
-        where: { id },
-      });
-
-      res.json({ message: "Feedback deletado com sucesso." });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Erro ao deletar feedback." });
-    }
-  }
-);
-
-router.put(
-  "/:id",
-  authenticateToken,
-  async (req: AuthenticatedRequest, res) => {
-    const { id } = req.params;
-    const { name, email, message, rating } = req.body;
-
-    try {
-      // 1. Verifica se o feedback existe
-      const feedback = await prisma.feedback.findUnique({
-        where: { id },
-      });
-
-      if (!feedback) {
-        return res.status(404).json({ error: "Feedback não encontrado." });
-      }
-
-      // 2. Verifica se o feedback pertence ao usuário autenticado
-      if (feedback.userId !== Number(req.user?.id)) {
-        return res.status(403).json({ error: "Ação não permitida." });
-      }
-
-      // 3. Atualiza o feedback
-      const updatedFeedback = await prisma.feedback.update({
-        where: { id },
-        data: {
-          name,
-          email,
-          message,
-          rating,
-        },
-      });
-
-      // 4. Retorna o feedback atualizado
-      res.json(updatedFeedback);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Erro ao atualizar feedback." });
-    }
-  }
-);
+router.delete("/:id", authenticateToken, FeedbackController.delete);
 
 export default router;
