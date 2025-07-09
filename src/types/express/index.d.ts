@@ -1,5 +1,5 @@
 // src/types/express/index.d.ts
-import { JwtPayload } from "jsonwebtoken";
+import type { JwtPayload } from "../jwtPayload";
 
 declare global {
   namespace Express {

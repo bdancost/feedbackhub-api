@@ -2,8 +2,10 @@
 import { Router } from "express";
 import { authenticateToken } from "../middlewares/auth.middleware";
 import { FeedbackController } from "../controllers/feedback.controller";
+import { RequestHandler } from "express";
 
 const router = Router();
+const authMiddleware = authenticateToken as RequestHandler;
 
 /**
  * @swagger
@@ -40,7 +42,7 @@ const router = Router();
  *         description: Erro interno
  */
 
-router.post("/", authenticateToken, FeedbackController.create);
+router.post("/", authMiddleware, FeedbackController.create);
 
 /**
  * @swagger
@@ -72,7 +74,7 @@ router.get("/", FeedbackController.getAll);
  *         description: Erro interno
  */
 
-router.get("/my", authenticateToken, FeedbackController.getUserFeedbacks);
+router.get("/my", authMiddleware, FeedbackController.getUserFeedbacks);
 
 /**
  * @swagger
@@ -117,7 +119,7 @@ router.get("/my", authenticateToken, FeedbackController.getUserFeedbacks);
  *         description: Erro interno
  */
 
-router.put("/:id", authenticateToken, FeedbackController.update);
+router.put("/:id", authMiddleware, FeedbackController.update);
 
 /**
  * @swagger
@@ -145,6 +147,6 @@ router.put("/:id", authenticateToken, FeedbackController.update);
  *         description: Erro interno
  */
 
-router.delete("/:id", authenticateToken, FeedbackController.delete);
+router.delete("/:id", authMiddleware, FeedbackController.delete);
 
 export default router;

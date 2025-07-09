@@ -5,6 +5,7 @@ import { FeedbackService } from "../services/feedback.service";
 import { sendFeedbackEmail } from "../utils/mailer";
 import { ZodError } from "zod";
 import { logger } from "../utils/logger";
+import { NotFoundError, UnauthorizedError } from "../utils/errors";
 
 export const FeedbackController = {
   // ✅ CREATE
@@ -22,8 +23,6 @@ export const FeedbackController = {
       logger.info(
         `Feedback criado com sucesso (userId=${req.user?.id}, email=${validatedData.email})`
       );
-
-      await sendFeedbackEmail(validatedData.email, validatedData.name);
 
       res.status(201).json(feedback);
     } catch (err) {
@@ -77,61 +76,62 @@ export const FeedbackController = {
         Number(req.user?.id)
       );
 
-      if (result === "not_found") {
-        logger.warn(`Feedback ID ${id} não encontrado`);
-        return res.status(404).json({ error: "Feedback não encontrado." });
-      }
-
-      if (result === "unauthorized") {
-        logger.warn(`Usuário não autorizado a deletar feedback ID ${id}`);
-        return res.status(403).json({ error: "Ação não permitida." });
-      }
-
       logger.info(`Feedback ID ${id} deletado com sucesso`);
-      res.json({ message: "Feedback deletado com sucesso." });
+      res.json(result);
     } catch (error) {
+      if (error instanceof NotFoundError) {
+        logger.warn(error.message);
+        return res.status(404).json({ error: error.message });
+      }
+
+      if (error instanceof UnauthorizedError) {
+        logger.warn(error.message);
+        return res.status(403).json({ error: error.message });
+      }
+
       logger.error({ err: error }, "Erro ao deletar feedback");
       res.status(500).json({ error: "Erro ao deletar feedback." });
     }
   },
 
-  // ✅ UPDATE com validação parcial
+  // ✅ UPDATE
   async update(req: AuthenticatedRequest, res: Response) {
     const { id } = req.params;
-    logger.info(`Recebendo requisição para atualizar feedback ID ${id}`);
 
     try {
-      const updateSchema = feedbackSchema.partial(); // Valida apenas campos enviados
+      logger.info(`Recebendo requisição para atualizar feedback ID ${id}`);
+
+      const updateSchema = feedbackSchema.partial(); // valida apenas os campos enviados
       const validatedUpdate = updateSchema.parse(req.body);
 
-      const updated = await FeedbackService.updateFeedback(
+      const result = await FeedbackService.updateFeedback(
         id,
         Number(req.user?.id),
         validatedUpdate
       );
 
-      if (updated === "not_found") {
-        logger.warn(`Feedback ID ${id} não encontrado`);
-        return res.status(404).json({ error: "Feedback não encontrado." });
-      }
-
-      if (updated === "unauthorized") {
-        logger.warn(`Usuário não autorizado a atualizar feedback ID ${id}`);
-        return res.status(403).json({ error: "Ação não permitida." });
-      }
-
       logger.info(`Feedback ID ${id} atualizado com sucesso`);
-      res.json(updated);
-    } catch (err) {
-      if (err instanceof ZodError) {
+      res.json(result);
+    } catch (error) {
+      if (error instanceof ZodError) {
         logger.warn("Erro de validação ao atualizar feedback");
         return res.status(400).json({
           error: "Erro de validação",
-          details: err.errors,
+          details: error.errors,
         });
       }
 
-      logger.error({ err }, "Erro ao atualizar feedback");
+      if (error instanceof NotFoundError) {
+        logger.warn(error.message);
+        return res.status(404).json({ error: error.message });
+      }
+
+      if (error instanceof UnauthorizedError) {
+        logger.warn(error.message);
+        return res.status(403).json({ error: error.message });
+      }
+
+      logger.error({ err: error }, "Erro ao atualizar feedback");
       res.status(500).json({ error: "Erro ao atualizar feedback." });
     }
   },
