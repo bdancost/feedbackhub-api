@@ -11,7 +11,12 @@ import swaggerUi from "swagger-ui-express";
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173", // Porta do seu frontend Vite
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(helmet());
 app.use(limiter);
