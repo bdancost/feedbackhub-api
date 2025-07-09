@@ -3,31 +3,37 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "secretkey";
 
-export interface AuthenticatedRequest extends Request {
-  userId?: string;
-}
-
+// Interface do payload do JWT
 interface JwtPayload {
-  userId: string;
+  id: string;
   email: string;
 }
 
+// Interface estendida da Request para conter os dados do usuário
+export interface AuthenticatedRequest extends Request {
+  user?: JwtPayload;
+}
+
+// Middleware de autenticação
 export const authenticateToken = (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) => {
   const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
+  const token = authHeader?.split(" ")[1]; // Ex: "Bearer TOKEN"
 
-  if (!token) return res.status(401).json({ error: "Token missing" });
+  if (!token) {
+    return res.status(401).json({ error: "Token não fornecido" });
+  }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    // @ts-ignore
-    req.user = decoded;
-    next();
-  } catch (err) {
+
+    req.user = decoded; // Agora `req.user` contém o userId e email do usuário autenticado
+
+    next(); // continua para a rota protegida
+  } catch (error) {
     return res.status(403).json({ error: "Token inválido ou expirado" });
   }
 };

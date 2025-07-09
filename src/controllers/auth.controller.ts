@@ -52,6 +52,7 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
 
   try {
     const user = await prisma.user.findUnique({ where: { email } });
+
     if (!user) {
       logger.warn(`Login inválido - usuário não encontrado: ${email}`);
       return res.status(401).json({ error: "Invalid credentials" });
@@ -63,12 +64,20 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
       expiresIn: "1h",
     });
 
     logger.info(`Login bem-sucedido: ${email}`);
-    return res.json({ token });
+
+    // 🔁 Envia token + dados do usuário
+    return res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+      },
+    });
   } catch (error) {
     logger.error({ err: error }, "Erro ao fazer login");
     return res.status(500).json({ error: "Internal server error" });

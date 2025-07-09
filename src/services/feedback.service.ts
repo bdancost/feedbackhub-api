@@ -1,6 +1,7 @@
 // src/services/feedback.service.ts
 import { FeedbackRepository } from "../repositories/feedback.repository";
 import { sendFeedbackEmail } from "../utils/mailer";
+import { NotFoundError, UnauthorizedError } from "../utils/errors";
 
 export const FeedbackService = {
   async createFeedback(data: {
@@ -11,10 +12,7 @@ export const FeedbackService = {
     userId: number;
   }) {
     const feedback = await FeedbackRepository.create(data);
-
-    // Enviar email de agradecimento
     await sendFeedbackEmail(data.email, data.name);
-
     return feedback;
   },
 
@@ -28,12 +26,12 @@ export const FeedbackService = {
 
   async deleteFeedback(id: string, userId: number) {
     const feedback = await FeedbackRepository.findById(id);
-
-    if (!feedback) return "not_found";
-    if (feedback.userId !== userId) return "unauthorized";
+    if (!feedback) throw new NotFoundError("Feedback não encontrado");
+    if (feedback.userId !== userId)
+      throw new UnauthorizedError("Ação não permitida");
 
     await FeedbackRepository.delete(id);
-    return "deleted";
+    return { message: "Feedback deletado com sucesso" };
   },
 
   async updateFeedback(
@@ -42,10 +40,14 @@ export const FeedbackService = {
     data: { name?: string; email?: string; message?: string; rating?: number }
   ) {
     const feedback = await FeedbackRepository.findById(id);
+    if (!feedback) throw new NotFoundError("Feedback não encontrado");
+    if (feedback.userId !== userId)
+      throw new UnauthorizedError("Ação não permitida");
 
-    if (!feedback) return "not_found";
-    if (feedback.userId !== userId) return "unauthorized";
-
-    return FeedbackRepository.update(id, data);
+    const updated = await FeedbackRepository.update(id, data);
+    return {
+      message: "Feedback atualizado com sucesso",
+      feedback: updated,
+    };
   },
 };
