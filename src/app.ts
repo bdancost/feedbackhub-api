@@ -21,8 +21,8 @@ app.use(express.json());
 app.use(helmet());
 app.use(limiter);
 
-app.use("/feedback", feedbackRoutes);
-app.use("/auth", authRoutes);
+app.use("/api/feedback", feedbackRoutes);
+app.use("/api/auth", authRoutes);
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/docs", swaggerUiHandler, swaggerDocHandler);
