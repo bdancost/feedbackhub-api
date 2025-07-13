@@ -12,9 +12,9 @@ export const register = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
-  const { email, password } = req.body;
+  const { name, email, password } = req.body;
 
-  if (!email || !password) {
+  if (!name || !email || !password) {
     logger.warn("Tentativa de registro sem email ou senha");
     return res.status(400).json({ error: "Email and password are required" });
   }
@@ -29,7 +29,7 @@ export const register = async (
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
-      data: { email, password: hashedPassword },
+      data: { name, email, password: hashedPassword },
     });
 
     logger.info(`Usuário registrado com sucesso: ${email}`);
