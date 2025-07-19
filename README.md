@@ -114,7 +114,7 @@ Cobertura completa dos principais fluxos.
 ## 💡 Autor
 
 Desenvolvido por Daniel Fernandes  
-[GitHub](https://github.com/bdancost) | [LinkedIn](https://www.linkedin.com/in/seu-perfil)
+[GitHub](https://github.com/bdancost) | [LinkedIn](https://www.linkedin.com/in/daniel-fernandes1988/)
 
 ---
 
